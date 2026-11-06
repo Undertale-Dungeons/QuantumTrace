@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "quantumtrace",
+  "version": "${version}",
+  "name": "QuantumTrace",
+  "description": "A configurable visual enhancement mod for Minecraft.",
+  "authors": ["Undertale-Dungeons"],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.quantumtrace.QuantumTraceClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "fabric-api": "*",
+    "java": ">=25"
+  }
+}
