@@ -36,7 +36,7 @@ jobs:
           mod_jar="$(find build/libs -maxdepth 1 -name 'quantumtrace-*.jar' ! -name '*-sources.jar' -print -quit)"
           test -n "$mod_jar"
           unzip -p "$mod_jar" META-INF/jars/caustica-0.1.1.jar > "$RUNNER_TEMP/caustica.jar"
-          jar tf "$RUNNER_TEMP/caustica.jar" | grep -Fxq 'caustica/shaders/pipelines/world/primary.rgen.spv'
+          jar tf "$RUNNER_TEMP/caustica.jar" | grep -Fxq 'caustica/rt/world.rgen.spv'
           if jar tf "$RUNNER_TEMP/caustica.jar" | grep -Eiq '(^|/)(nvngx_|libnvidia-ngx-)'; then
             echo "Unexpected proprietary NVIDIA NGX binary in distributable"
             exit 1
