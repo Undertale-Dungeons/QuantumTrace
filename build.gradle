@@ -118,7 +118,7 @@ tasks.register("prepareCausticaNestedMod") {
 
             boolean hasModMetadata = names.contains("fabric.mod.json")
             boolean hasMixinMetadata = names.any { it.endsWith("caustica.mixins.json") }
-            boolean hasRaygenShader = names.any { it.endsWith("primary.rgen.spv") }
+            boolean hasRaygenShader = names.any { it.endsWith("world.rgen.spv") }
             if (!hasModMetadata || !hasMixinMetadata || !hasRaygenShader) {
                 def diagnosticEntries = names.findAll {
                     it.toLowerCase(Locale.ROOT).contains("fabric.mod")
