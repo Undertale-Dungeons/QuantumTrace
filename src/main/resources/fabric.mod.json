@@ -3,7 +3,7 @@
   "id": "quantumtrace",
   "version": "${version}",
   "name": "QuantumTrace",
-  "description": "A configurable visual enhancement mod for Minecraft.",
+  "description": "Vanilla-focused visual enhancements with bundled hardware path tracing.",
   "authors": ["Undertale-Dungeons"],
   "environment": "client",
   "entrypoints": {
@@ -11,6 +11,11 @@
       "dev.quantumtrace.QuantumTraceClient"
     ]
   },
+  "jars": [
+    {
+      "file": "META-INF/jars/caustica-0.1.1.jar"
+    }
+  ],
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "26.2",
