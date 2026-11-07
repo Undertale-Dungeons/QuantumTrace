@@ -1,68 +1,57 @@
-# QuantumTrace hardware ray tracing plan
+# Hardware ray tracing setup
 
-## Current status
+## What is included
 
-QuantumTrace does **not** contain a ray-tracing renderer or an RTX implementation yet. The in-game control center reports this honestly and keeps the hardware ray-tracing control disabled until a renderer backend is integrated.
+QuantumTrace 0.2.0 bundles **Caustica 0.1.1** as a separate Fabric nested mod. Caustica supplies the actual Vulkan hardware path tracer: device feature negotiation, ray-tracing pipelines, acceleration-structure builds, terrain scene extraction, material data, and world-lighting shaders.
 
-This document records the technical requirements for a real implementation. It is not a claim that those features are already available.
+This is a real hardware ray-tracing path, not a raster preset with an RTX name. The renderer only reports itself active after its Vulkan RT device/context has initialized.
 
-## Target architecture
+Upstream engine: https://github.com/ComfyFluffy/Caustica  
+Pinned release source: https://github.com/ComfyFluffy/Caustica/tree/ddf36c0e073b53ffdeecf411ea92f0ac5170f358  
+License: LGPL-3.0-or-later. See [the included license texts](../third_party/caustica/).
 
-QuantumTrace targets Minecraft Java Edition 26.2 on Fabric. Minecraft 26.2 offers an experimental Vulkan graphics backend alongside OpenGL. Rendering code must use the Minecraft/Blaze3D rendering abstraction where possible; raw OpenGL calls are not portable to the Vulkan backend.
+## Enable it
 
-A hardware ray-tracing backend would need to:
+1. Use Minecraft Java Edition 26.2 with Fabric Loader 0.19.3 or newer and Java 25.
+2. In Minecraft's Video Settings, select the experimental **Vulkan** graphics backend if it is not already selected.
+3. Start the game with QuantumTrace installed. Caustica is already bundled inside the QuantumTrace jar; do not install a second Caustica jar.
+4. Open the QuantumTrace menu with **O**.
+5. Turn on **HARDWARE RAY TRACING**. If the Vulkan device was created without RT features, restart Minecraft after changing this setting.
+6. Check the status line in the QuantumTrace menu. It reports whether the nested engine is loaded and whether its RT context is active.
 
-1. Detect the active Minecraft graphics backend and query the actual Vulkan physical device.
-2. Check the Vulkan ray-tracing extensions and required device features before enabling the renderer.
-3. Extract chunk, block, foliage, fluid, and entity geometry into GPU-friendly scene data.
-4. Build and update bottom-level and top-level acceleration structures (BLAS/TLAS).
-5. Trace direct-light shadow rays, reflection rays, and indirect-lighting rays.
-6. Denoise temporally and composite the result into the Minecraft frame.
-7. Release GPU resources safely on world changes, device loss, and shutdown.
+The **RAYS PER PIXEL** control cycles between 1, 2, 4 and 8 samples. **MAX PATH BOUNCES** cycles between 2, 4, 6 and 8. Higher values can increase GPU load substantially.
 
-## Vulkan requirements to investigate
+## Hardware and driver support
 
-Hardware support is not established by the GPU name alone. The backend must query the driver's enabled extensions and feature bits. The minimum capability set to investigate includes:
+A GPU must expose all required features through the active Vulkan driver. The upstream runtime checks the actual physical device for:
 
 - `VK_KHR_acceleration_structure`
+- `VK_KHR_ray_tracing_pipeline`
 - `VK_KHR_deferred_host_operations`
-- At least one traversal path: `VK_KHR_ray_query` or `VK_KHR_ray_tracing_pipeline`
-- Buffer device address and acceleration-structure feature support
-- Descriptor indexing features required by the renderer's material system
+- `VK_KHR_ray_tracing_position_fetch`
+- `VK_KHR_ray_query`
+- Buffer device address, runtime descriptor arrays, non-uniform sampled-image indexing, partially-bound descriptors, update-after-bind sampled-image descriptors, and shader int64 feature bits
 
-A ray-tracing-pipeline path uses ray-generation, hit, and miss shaders plus a shader binding table. A ray-query path can run traversal from compute shaders. The exact minimum must be validated against the shaders and device features QuantumTrace eventually ships.
+A GPU marketed as an NVIDIA RTX card is not sufficient evidence by itself: the installed driver and active Vulkan backend must expose the full set of required extensions and feature bits. A non-NVIDIA card may work if it exposes the same Vulkan capabilities.
 
-## Rendering quality controls planned
+Minecraft's Vulkan backend is experimental in 26.2. If Vulkan is missing, the backend falls back, or the driver does not expose all the RT capabilities, Caustica does not create the hardware ray-tracing context. QuantumTrace then remains on the normal Minecraft rendering path.
 
-Once a backend exists, the settings UI can expose real controls for:
+## DLSS / NVIDIA NGX
 
-- Hardware ray tracing: Off / Auto / On
-- Ray-traced shadows
-- Ray-traced ambient occlusion
-- Ray-traced reflections
-- Indirect lighting / global illumination
-- Samples per pixel and maximum bounce depth
-- Denoiser and temporal accumulation
-- Render scale and ray-tracing resolution
+This distribution intentionally removes optional proprietary NVIDIA NGX native binaries from the upstream Caustica release. DLSS Ray Reconstruction and DLSS Frame Generation are not included or enabled. The path-tracing renderer itself uses Vulkan RT and does not require DLSS.
 
-The controls must remain unavailable when the renderer is not initialized or the device does not meet its requirements. Selecting a setting must never silently claim that ray tracing is active when the engine has fallen back to rasterization.
+NVIDIA NGX is governed by separate NVIDIA SDK terms, not by Caustica's LGPL license. No NVIDIA NGX runtime binaries are redistributed in this QuantumTrace build. See the [NVIDIA SDK license](https://github.com/NVIDIA/DLSS/blob/main/LICENSE.txt).
 
-## Compatibility and fallback
+## Compatibility notes
 
-- Vulkan is experimental in Minecraft 26.2 and may fall back to another graphics backend.
-- Vulkan support alone does not imply ray-tracing support.
-- NVIDIA RTX branding is not a reliable hardware check. Vulkan ray-tracing support is capability-based and may be exposed by supported GPUs from different vendors.
-- When hardware ray tracing is unavailable, QuantumTrace should retain the standard Minecraft/Vanilla Remade rendering path.
-- The initial renderer must avoid raw OpenGL interop so it can work with Minecraft's backend abstraction.
+- This is an experimental renderer. Use a separate Minecraft profile and back up important worlds before testing.
+- Other mods that heavily modify world rendering, post-processing, the Vulkan backend, or chunk/model extraction may conflict with the path tracer.
+- Performance depends on scene complexity, render resolution, sample count, bounce count, GPU and driver.
+- If RT status remains inactive, check the game log for Caustica's Vulkan device capability report and verify Vulkan is selected.
+- The build pipeline verifies the nested engine and its SPIR-V ray-generation shader are present, but hardware compatibility still depends on the player's machine.
 
-## References
+## Build and licensing
 
-- [Minecraft 26.2 release notes](https://feedback.minecraft.net/hc/en-us/articles/46690753273997-Minecraft-Java-Edition-26-2)
-- [Fabric: Minecraft 26.2 rendering changes](https://www.fabricmc.net/2026/06/15/262.html)
-- [Fabric 26.2 rendering concepts](https://docs.fabricmc.net/develop/rendering/basic-concepts)
-- [Fabric 26.2 world rendering](https://docs.fabricmc.net/develop/rendering/world)
-- [Vulkan ray-tracing extensions overview](https://docs.vulkan.org/guide/latest/extensions/ray_tracing.html)
+The QuantumTrace Gradle build downloads the pinned Caustica 0.1.1 release and verifies its SHA-256 before bundling it as a nested mod. The build omits native files whose names begin with `nvngx_` or `libnvidia-ngx-`, because those optional runtime files have a separate proprietary NVIDIA license. All Caustica Java classes, mixins, and ray-tracing shader resources remain in the nested jar.
 
----
-
-**Next engineering milestone:** build a Vulkan device/capability bridge that is compatible with Minecraft's 26.2 renderer lifecycle. The ray tracer should only be enabled after this bridge and the scene extraction path pass hardware and fallback tests.
+The upstream source, original license, third-party notices, and a description of the packaging change are included in this repository under `third_party/caustica/`. The nested Caustica component remains LGPL-3.0-or-later.
