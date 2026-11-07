@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component;
 
 public final class QuantumTraceScreen extends Screen {
     private static final Identifier PEABERT = Identifier.fromNamespaceAndPath("quantumtrace", "textures/gui/peabert.jpg");
-    private static final int PANEL_HEIGHT = 380;
+    private static final int PANEL_HEIGHT = 416;
 
     private final Screen parent;
     private Button modeButton;
@@ -22,6 +22,7 @@ public final class QuantumTraceScreen extends Screen {
     private Button entityShadowsButton;
     private Button vignetteButton;
     private Button newGlintButton;
+    private Button rayTracingButton;
 
     private int titleClicks;
     private long lastTitleClick;
@@ -107,11 +108,16 @@ public final class QuantumTraceScreen extends Screen {
         ).bounds(rightX, y + row * 5, buttonWidth, 22).build());
         newGlintButton.active = false;
 
+        rayTracingButton = addRenderableWidget(Button.builder(
+                Component.literal("HARDWARE RAY TRACING     BACKEND NOT READY"), b -> {}
+        ).bounds(rightX, y + row * 6, buttonWidth, 22).build());
+        rayTracingButton.active = false;
+
         addRenderableWidget(Button.builder(Component.literal("APPLY VANILLA MAXXING"), b -> applyVanillaMaxxing())
-                .bounds(rightX, panelTop() + 267, buttonWidth, 22).build());
+                .bounds(rightX, panelTop() + 294, buttonWidth, 22).build());
 
         addRenderableWidget(Button.builder(Component.literal("DONE  /  SAVE SETTINGS"), b -> onClose())
-                .bounds(leftX, panelTop() + 332, panelWidth - 48, 24).build());
+                .bounds(leftX, panelTop() + 368, panelWidth - 48, 24).build());
 
         refreshGraphicsLabels();
     }
@@ -245,24 +251,27 @@ public final class QuantumTraceScreen extends Screen {
         g.text(font, "PROFILES", left + 28, top + 63, 0xFF71839A, false);
         g.text(font, "VANILLA GRAPHICS", rightX + 2, top + 63, 0xFF71839A, false);
 
-        g.text(font, "Quality presets now update Minecraft's built-in visual options.",
-                left + 28, top + 221, 0xFF9EADBF, false);
-        g.text(font, "Theme changes the control center accents.",
-                left + 28, top + 235, 0xFF71839A, false);
-        g.text(font, "Custom post-processing and the new glint renderer are not ready yet.",
-                left + 28, top + 251, 0xFFD6B47A, false);
+        g.text(font, "RTX / RAY TRACING", left + 28, top + 221, a, true);
+        g.text(font, "STATUS     NOT AVAILABLE IN THIS BUILD",
+                left + 28, top + 239, 0xFFD6B47A, false);
+        g.text(font, "Needs a Vulkan hardware RT backend,",
+                left + 28, top + 255, 0xFF9EADBF, false);
+        g.text(font, "device capability checks and a scene tracer.",
+                left + 28, top + 269, 0xFF9EADBF, false);
+        g.text(font, "No ray-traced effects are being rendered yet.",
+                left + 28, top + 285, 0xFF71839A, false);
 
         if (secretUnlocked) {
-            g.text(font, "SECRET UNLOCKED", left + 28, top + 277, a, true);
+            g.text(font, "SECRET UNLOCKED", left + 28, top + 314, a, true);
             if (QuantumTraceConfig.isPeabertEnabled()) {
                 g.blit(RenderPipelines.GUI_TEXTURED, PEABERT,
-                        left + 160, top + 268, 0, 0, 46, 64, 110, 152);
-                g.text(font, "PEABERT", left + 214, top + 294, a, true);
+                        left + 160, top + 300, 0, 0, 46, 64, 110, 152);
+                g.text(font, "PEABERT", left + 214, top + 326, a, true);
             } else {
-                g.text(font, "Peabert is ready to enable", left + 28, top + 293, 0xFF9EADBF, false);
+                g.text(font, "Peabert is ready to enable", left + 28, top + 330, 0xFF9EADBF, false);
             }
         } else {
-            g.text(font, "CLASSIFIED  //  tap the title 7 times", left + 28, top + 286,
+            g.text(font, "CLASSIFIED  //  tap the title 7 times", left + 28, top + 318,
                     0xFF65758A, false);
         }
     }
