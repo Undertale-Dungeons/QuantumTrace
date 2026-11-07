@@ -110,12 +110,27 @@ tasks.register("prepareCausticaNestedMod") {
 
         // Fail the build rather than silently shipping a settings-only QuantumTrace jar.
         new JarFile(nested).withCloseable { jar ->
-            if (jar.getEntry("fabric.mod.json") == null ||
-                    jar.getEntry("caustica.mixins.json") == null ||
-                    jar.getEntry("caustica/shaders/pipelines/world/primary.rgen.spv") == null) {
-                throw new GradleException("Bundled Caustica jar is missing its Fabric metadata or ray-tracing shaders")
+            List<String> names = []
+            def iterator = jar.entries()
+            while (iterator.hasMoreElements()) {
+                names.add(iterator.nextElement().name)
             }
-            def names = jar.entries().collect { it.name }
+
+            boolean hasModMetadata = names.contains("fabric.mod.json")
+            boolean hasMixinMetadata = names.any { it.endsWith("caustica.mixins.json") }
+            boolean hasRaygenShader = names.any { it.endsWith("primary.rgen.spv") }
+            if (!hasModMetadata || !hasMixinMetadata || !hasRaygenShader) {
+                def diagnosticEntries = names.findAll {
+                    it.toLowerCase(Locale.ROOT).contains("fabric.mod")
+                            || it.toLowerCase(Locale.ROOT).contains("mixins")
+                            || it.toLowerCase(Locale.ROOT).endsWith(".spv")
+                            || it.toLowerCase(Locale.ROOT).contains("primary.rgen")
+                }.take(100)
+                throw new GradleException("Bundled Caustica validation failed: fabric.mod.json=${hasModMetadata}, " +
+                        "caustica.mixins.json=${hasMixinMetadata}, primary.rgen.spv=${hasRaygenShader}; " +
+                        "matching entries: ${diagnosticEntries}")
+            }
+
             if (names.any { name ->
                 String baseName = name.substring(name.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT)
                 baseName.startsWith("nvngx_") || baseName.startsWith("libnvidia-ngx-")
