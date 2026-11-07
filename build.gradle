@@ -152,3 +152,11 @@ tasks.named("processResources").configure {
         expand "version": project.version
     }
 }
+
+
+// The nested renderer is a generated main resource. Make its producer explicit for
+// sourcesJar as well, while keeping the binary runtime out of the source-only archive.
+tasks.named("sourcesJar").configure {
+    dependsOn(tasks.named("prepareCausticaNestedMod"))
+    exclude "META-INF/jars/caustica-*.jar"
+}
