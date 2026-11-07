@@ -1,3 +1,8 @@
+import java.security.MessageDigest
+import java.util.jar.JarEntry
+import java.util.jar.JarFile
+import java.util.jar.JarOutputStream
+
 plugins {
     id "net.fabricmc.fabric-loom" version "1.17.21"
 }
@@ -33,7 +38,100 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
 }
 
-processResources {
+// Caustica is an independently licensed LGPL Fabric mod which supplies the actual
+// Vulkan hardware ray-tracing renderer. Package it as a Fabric nested mod rather
+// than copying its classes into QuantumTrace. The release checksum pins the exact
+// upstream binary we build against.
+def causticaVersion = "0.1.1"
+def causticaSha256 = "785b4b3b28a9b13e30a28e846a73050b87b4009af28125e3a262cd3365afdef0"
+def causticaUrl = "https://github.com/ComfyFluffy/Caustica/releases/download/${causticaVersion}/caustica-${causticaVersion}.jar"
+def causticaDownload = layout.buildDirectory.file("downloads/caustica-${causticaVersion}-upstream.jar")
+def nestedResources = layout.buildDirectory.dir("generated/quantumtrace-nested-resources")
+def nestedCausticaJar = nestedResources.map { it.file("META-INF/jars/caustica-${causticaVersion}.jar") }
+
+def sha256Of = { File file ->
+    MessageDigest.getInstance("SHA-256").digest(file.bytes)
+            .collect { String.format("%02x", it & 0xff) }.join()
+}
+
+tasks.register("prepareCausticaNestedMod") {
+    group = "build"
+    description = "Downloads, verifies, and nests the LGPL Caustica hardware ray-tracing engine."
+    outputs.file(nestedCausticaJar)
+
+    doLast {
+        File upstream = causticaDownload.get().asFile
+        if (!upstream.exists() || sha256Of(upstream) != causticaSha256) {
+            upstream.parentFile.mkdirs()
+            upstream.delete()
+            URLConnection connection = new URL(causticaUrl).openConnection()
+            connection.connectTimeout = 15000
+            connection.readTimeout = 180000
+            connection.setRequestProperty("User-Agent", "QuantumTrace-build")
+            connection.getInputStream().withCloseable { input ->
+                upstream.withOutputStream { output -> input.transferTo(output) }
+            }
+        }
+
+        String downloadedHash = sha256Of(upstream)
+        if (downloadedHash != causticaSha256) {
+            upstream.delete()
+            throw new GradleException("Caustica ${causticaVersion} checksum mismatch: ${downloadedHash}")
+        }
+
+        File nested = nestedCausticaJar.get().asFile
+        nested.parentFile.mkdirs()
+        nested.delete()
+
+        // The upstream jar can contain optional NVIDIA NGX binaries. Those are
+        // proprietary SDK components under a separate NVIDIA license, not needed
+        // for Vulkan ray tracing itself, so they are deliberately not redistributed.
+        new JarFile(upstream).withCloseable { source ->
+            new JarOutputStream(new BufferedOutputStream(new FileOutputStream(nested))).withCloseable { output ->
+                def entries = source.entries()
+                while (entries.hasMoreElements()) {
+                    JarEntry entry = entries.nextElement()
+                    String baseName = entry.name.substring(entry.name.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT)
+                    boolean nvidiaSdkBinary = baseName.startsWith("nvngx_") || baseName.startsWith("libnvidia-ngx-")
+                    if (!nvidiaSdkBinary) {
+                        JarEntry copy = new JarEntry(entry.name)
+                        if (entry.time >= 0L) copy.time = entry.time
+                        output.putNextEntry(copy)
+                        if (!entry.directory) {
+                            source.getInputStream(entry).withCloseable { input -> input.transferTo(output) }
+                        }
+                        output.closeEntry()
+                    } else {
+                        logger.lifecycle("Omitting separately licensed NVIDIA NGX runtime: ${entry.name}")
+                    }
+                }
+            }
+        }
+
+        // Fail the build rather than silently shipping a settings-only QuantumTrace jar.
+        new JarFile(nested).withCloseable { jar ->
+            if (jar.getEntry("fabric.mod.json") == null ||
+                    jar.getEntry("caustica.mixins.json") == null ||
+                    jar.getEntry("caustica/shaders/pipelines/world/primary.rgen.spv") == null) {
+                throw new GradleException("Bundled Caustica jar is missing its Fabric metadata or ray-tracing shaders")
+            }
+            def names = jar.entries().collect { it.name }
+            if (names.any { name ->
+                String baseName = name.substring(name.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT)
+                baseName.startsWith("nvngx_") || baseName.startsWith("libnvidia-ngx-")
+            }) {
+                throw new GradleException("A proprietary NVIDIA NGX native library was not removed from the nested jar")
+            }
+        }
+
+        logger.lifecycle("Prepared Caustica ${causticaVersion} nested mod (${nested.length()} bytes; no NVIDIA NGX binaries).")
+    }
+}
+
+sourceSets.main.resources.srcDir(nestedResources)
+
+tasks.named("processResources").configure {
+    dependsOn(tasks.named("prepareCausticaNestedMod"))
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
         expand "version": project.version
