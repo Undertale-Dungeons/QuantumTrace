@@ -3,6 +3,7 @@ package dev.quantumtrace;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
@@ -213,7 +214,10 @@ public final class QuantumTraceScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         int titleY = panelTop() + 14;
         if (button == 0 && mouseY >= titleY && mouseY <= titleY + 22
                 && mouseX >= this.width / 2 - 110 && mouseX <= this.width / 2 + 110) {
@@ -226,7 +230,7 @@ public final class QuantumTraceScreen extends Screen {
                 peabertButton.setMessage(peabertLabel());
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
