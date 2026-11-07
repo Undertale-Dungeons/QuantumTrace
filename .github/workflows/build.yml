@@ -29,6 +29,20 @@ jobs:
       - name: Build mod
         run: gradle --no-daemon clean build
 
+      - name: Verify bundled hardware ray tracing runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mod_jar="$(find build/libs -maxdepth 1 -name 'quantumtrace-*.jar' ! -name '*-sources.jar' -print -quit)"
+          test -n "$mod_jar"
+          unzip -p "$mod_jar" META-INF/jars/caustica-0.1.1.jar > "$RUNNER_TEMP/caustica.jar"
+          jar tf "$RUNNER_TEMP/caustica.jar" | grep -Fxq 'caustica/shaders/pipelines/world/primary.rgen.spv'
+          if jar tf "$RUNNER_TEMP/caustica.jar" | grep -Eiq '(^|/)(nvngx_|libnvidia-ngx-)'; then
+            echo "Unexpected proprietary NVIDIA NGX binary in distributable"
+            exit 1
+          fi
+          echo "Verified bundled Vulkan path-tracing engine and shader payload"
+
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
