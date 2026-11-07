@@ -9,11 +9,20 @@ import net.minecraft.network.chat.Component;
 
 public final class QuantumTraceScreen extends Screen {
     private static final Identifier PEABERT = Identifier.fromNamespaceAndPath("quantumtrace", "textures/gui/peabert.jpg");
+    private static final int PANEL_HEIGHT = 380;
+
     private final Screen parent;
     private Button modeButton;
     private Button themeButton;
     private Button presetButton;
     private Button peabertButton;
+    private Button ambientOcclusionButton;
+    private Button cutoutLeavesButton;
+    private Button transparencyButton;
+    private Button entityShadowsButton;
+    private Button vignetteButton;
+    private Button newGlintButton;
+
     private int titleClicks;
     private long lastTitleClick;
     private boolean secretUnlocked;
@@ -23,54 +32,169 @@ public final class QuantumTraceScreen extends Screen {
         this.parent = parent;
     }
 
+    private int panelTop() {
+        return Math.max(12, (this.height - PANEL_HEIGHT) / 2);
+    }
+
     @Override
     protected void init() {
-        int panelWidth = Math.min(560, this.width - 32);
+        int panelWidth = Math.min(690, this.width - 32);
         int left = (this.width - panelWidth) / 2;
-        int buttonWidth = Math.min(340, panelWidth - 48);
-        int x = left + 24;
-        int y = Math.max(86, this.height / 2 - 70);
+        int gap = 12;
+        int buttonWidth = (panelWidth - 48 - gap) / 2;
+        int leftX = left + 24;
+        int rightX = leftX + buttonWidth + gap;
+        int y = panelTop() + 78;
+        int row = 29;
 
         modeButton = addRenderableWidget(Button.builder(modeLabel(), b -> {
             QuantumTraceConfig.cycleMode();
             modeButton.setMessage(modeLabel());
-        }).bounds(x, y, buttonWidth, 24).build());
+        }).bounds(leftX, y, buttonWidth, 22).build());
 
         themeButton = addRenderableWidget(Button.builder(themeLabel(), b -> {
             QuantumTraceConfig.cycleTheme();
             themeButton.setMessage(themeLabel());
-        }).bounds(x, y + 32, buttonWidth, 24).build());
+        }).bounds(leftX, y + row, buttonWidth, 22).build());
 
         presetButton = addRenderableWidget(Button.builder(presetLabel(), b -> {
             QuantumTraceConfig.cyclePreset();
+            applyQualityPreset();
             presetButton.setMessage(presetLabel());
-        }).bounds(x, y + 64, buttonWidth, 24).build());
+            refreshGraphicsLabels();
+        }).bounds(leftX, y + row * 2, buttonWidth, 22).build());
 
         peabertButton = addRenderableWidget(Button.builder(peabertLabel(), b -> {
             if (secretUnlocked) {
                 QuantumTraceConfig.togglePeabert();
                 peabertButton.setMessage(peabertLabel());
             }
-        }).bounds(x, y + 96, buttonWidth, 24).build());
+        }).bounds(leftX, y + row * 3, buttonWidth, 22).build());
         peabertButton.active = secretUnlocked;
 
+        ambientOcclusionButton = addRenderableWidget(Button.builder(ambientOcclusionLabel(), b -> {
+            this.minecraft.options.ambientOcclusion().set(!this.minecraft.options.ambientOcclusion().get());
+            saveGameOptions();
+            refreshGraphicsLabels();
+        }).bounds(rightX, y, buttonWidth, 22).build());
+
+        cutoutLeavesButton = addRenderableWidget(Button.builder(cutoutLeavesLabel(), b -> {
+            this.minecraft.options.cutoutLeaves().set(!this.minecraft.options.cutoutLeaves().get());
+            saveGameOptions();
+            refreshGraphicsLabels();
+        }).bounds(rightX, y + row, buttonWidth, 22).build());
+
+        transparencyButton = addRenderableWidget(Button.builder(transparencyLabel(), b -> {
+            this.minecraft.options.improvedTransparency().set(!this.minecraft.options.improvedTransparency().get());
+            saveGameOptions();
+            refreshGraphicsLabels();
+        }).bounds(rightX, y + row * 2, buttonWidth, 22).build());
+
+        entityShadowsButton = addRenderableWidget(Button.builder(entityShadowsLabel(), b -> {
+            this.minecraft.options.entityShadows().set(!this.minecraft.options.entityShadows().get());
+            saveGameOptions();
+            refreshGraphicsLabels();
+        }).bounds(rightX, y + row * 3, buttonWidth, 22).build());
+
+        vignetteButton = addRenderableWidget(Button.builder(vignetteLabel(), b -> {
+            this.minecraft.options.vignette().set(!this.minecraft.options.vignette().get());
+            saveGameOptions();
+            refreshGraphicsLabels();
+        }).bounds(rightX, y + row * 4, buttonWidth, 22).build());
+
+        newGlintButton = addRenderableWidget(Button.builder(
+                Component.literal("NEW GLINT     RENDERER IN PROGRESS"), b -> {}
+        ).bounds(rightX, y + row * 5, buttonWidth, 22).build());
+        newGlintButton.active = false;
+
+        addRenderableWidget(Button.builder(Component.literal("APPLY VANILLA MAXXING"), b -> applyVanillaMaxxing())
+                .bounds(rightX, panelTop() + 267, buttonWidth, 22).build());
+
         addRenderableWidget(Button.builder(Component.literal("DONE  /  SAVE SETTINGS"), b -> onClose())
-                .bounds(x, y + 142, buttonWidth, 24).build());
+                .bounds(leftX, panelTop() + 332, panelWidth - 48, 24).build());
+
+        refreshGraphicsLabels();
+    }
+
+    private void saveGameOptions() {
+        this.minecraft.options.save();
+    }
+
+    private void applyQualityPreset() {
+        switch (QuantumTraceConfig.getPreset()) {
+            case "Potato" -> setVanillaGraphics(false, false, false, false, false, 0);
+            case "Low" -> setVanillaGraphics(false, true, false, false, false, 1);
+            case "Medium" -> setVanillaGraphics(true, true, true, true, false, 2);
+            case "High" -> setVanillaGraphics(true, true, true, true, true, 4);
+            default -> setVanillaGraphics(true, true, true, true, true, 7);
+        }
+    }
+
+    private void applyVanillaMaxxing() {
+        setVanillaGraphics(true, true, true, true, true, 7);
+        refreshGraphicsLabels();
+    }
+
+    private void setVanillaGraphics(boolean ambientOcclusion, boolean cutoutLeaves,
+                                    boolean improvedTransparency, boolean entityShadows,
+                                    boolean vignette, int biomeBlend) {
+        this.minecraft.options.ambientOcclusion().set(ambientOcclusion);
+        this.minecraft.options.cutoutLeaves().set(cutoutLeaves);
+        this.minecraft.options.improvedTransparency().set(improvedTransparency);
+        this.minecraft.options.entityShadows().set(entityShadows);
+        this.minecraft.options.vignette().set(vignette);
+        this.minecraft.options.biomeBlendRadius().set(biomeBlend);
+        saveGameOptions();
+    }
+
+    private void refreshGraphicsLabels() {
+        if (ambientOcclusionButton != null) ambientOcclusionButton.setMessage(ambientOcclusionLabel());
+        if (cutoutLeavesButton != null) cutoutLeavesButton.setMessage(cutoutLeavesLabel());
+        if (transparencyButton != null) transparencyButton.setMessage(transparencyLabel());
+        if (entityShadowsButton != null) entityShadowsButton.setMessage(entityShadowsLabel());
+        if (vignetteButton != null) vignetteButton.setMessage(vignetteLabel());
+    }
+
+    private static String state(boolean enabled) {
+        return enabled ? "ON" : "OFF";
     }
 
     private Component modeLabel() {
         return Component.literal("VISUAL PROFILE     " + QuantumTraceConfig.getMode());
     }
+
     private Component themeLabel() {
         return Component.literal("INTERFACE THEME     " + QuantumTraceConfig.getTheme());
     }
+
     private Component presetLabel() {
         return Component.literal("QUALITY PRESET     " + QuantumTraceConfig.getPreset());
     }
+
     private Component peabertLabel() {
         return Component.literal(secretUnlocked
                 ? "SECRET MASCOT     PEABERT " + (QuantumTraceConfig.isPeabertEnabled() ? "ON" : "OFF")
                 : "CLASSIFIED FEATURE     LOCKED");
+    }
+
+    private Component ambientOcclusionLabel() {
+        return Component.literal("AMBIENT OCCLUSION     " + state(this.minecraft.options.ambientOcclusion().get()));
+    }
+
+    private Component cutoutLeavesLabel() {
+        return Component.literal("CUTOUT LEAVES     " + state(this.minecraft.options.cutoutLeaves().get()));
+    }
+
+    private Component transparencyLabel() {
+        return Component.literal("IMPROVED TRANSPARENCY     " + state(this.minecraft.options.improvedTransparency().get()));
+    }
+
+    private Component entityShadowsLabel() {
+        return Component.literal("ENTITY SHADOWS     " + state(this.minecraft.options.entityShadows().get()));
+    }
+
+    private Component vignetteLabel() {
+        return Component.literal("VIGNETTE     " + state(this.minecraft.options.vignette().get()));
     }
 
     private int accent() {
@@ -84,8 +208,8 @@ public final class QuantumTraceScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int titleY = this.height / 2 - 105;
-        if (button == 0 && mouseY >= titleY - 8 && mouseY <= titleY + 12
+        int titleY = panelTop() + 14;
+        if (button == 0 && mouseY >= titleY && mouseY <= titleY + 22
                 && mouseX >= this.width / 2 - 110 && mouseX <= this.width / 2 + 110) {
             long now = System.currentTimeMillis();
             titleClicks = now - lastTitleClick > 2200 ? 1 : titleClicks + 1;
@@ -102,44 +226,50 @@ public final class QuantumTraceScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         int a = accent();
-        int panelWidth = Math.min(560, width - 32);
+        int panelWidth = Math.min(690, width - 32);
         int left = (width - panelWidth) / 2;
-        int top = Math.max(18, height / 2 - 126);
+        int rightX = left + 24 + (panelWidth - 48 - 12) / 2 + 12;
+        int top = panelTop();
+
         g.fill(0, 0, width, height, 0xC9060A12);
-        g.fill(left, top, left + panelWidth, top + 300, 0xF0121B29);
+        g.fill(left, top, left + panelWidth, top + PANEL_HEIGHT, 0xF0121B29);
         g.fill(left, top, left + panelWidth, top + 4, a);
-        g.fill(left + 16, top + 16, left + 18, top + 284, a);
+        g.fill(left + 16, top + 16, left + 18, top + PANEL_HEIGHT - 16, a);
         g.fill(left + 26, top + 53, left + panelWidth - 20, top + 54, 0xFF354255);
+
         super.extractRenderState(g, mouseX, mouseY, delta);
 
-        String title = "QUANTUMTRACE";
-        g.text(font, title, left + 28, top + 18, a, true);
+        g.text(font, "QUANTUMTRACE", left + 28, top + 18, a, true);
         g.text(font, "VISUAL CONTROL CENTER  /  CLIENT CONFIGURATION",
                 left + 28, top + 38, 0xFF9EADBF, false);
-        g.text(font, "PROFILE", left + 28, top + 67, 0xFF71839A, false);
-        g.text(font, "Choose a look and performance preset", left + 28, top + 206,
-                0xFF9EADBF, false);
-        g.text(font, "Settings are saved automatically", left + 28, top + 220,
-                0xFF71839A, false);
+        g.text(font, "PROFILES", left + 28, top + 63, 0xFF71839A, false);
+        g.text(font, "VANILLA GRAPHICS", rightX + 2, top + 63, 0xFF71839A, false);
+
+        g.text(font, "Quality presets now update Minecraft's built-in visual options.",
+                left + 28, top + 221, 0xFF9EADBF, false);
+        g.text(font, "Theme changes the control center accents.",
+                left + 28, top + 235, 0xFF71839A, false);
+        g.text(font, "Custom post-processing and the new glint renderer are not ready yet.",
+                left + 28, top + 251, 0xFFD6B47A, false);
 
         if (secretUnlocked) {
-            g.fill(left + panelWidth - 145, top + 68, left + panelWidth - 25, top + 246, 0xFF263246);
+            g.text(font, "SECRET UNLOCKED", left + 28, top + 277, a, true);
             if (QuantumTraceConfig.isPeabertEnabled()) {
                 g.blit(RenderPipelines.GUI_TEXTURED, PEABERT,
-                        left + panelWidth - 137, top + 76, 0, 0, 110, 152, 110, 152);
-                g.text(font, "PEABERT", left + panelWidth - 112, top + 234, a, true);
+                        left + 160, top + 268, 0, 0, 46, 64, 110, 152);
+                g.text(font, "PEABERT", left + 214, top + 294, a, true);
             } else {
-                g.text(font, "SECRET FOUND", left + panelWidth - 125, top + 145, a, true);
-                g.text(font, "Enable Peabert", left + panelWidth - 123, top + 161, 0xFF9EADBF, false);
+                g.text(font, "Peabert is ready to enable", left + 28, top + 293, 0xFF9EADBF, false);
             }
         } else {
-            String hint = "CLASSIFIED  //  tap the title 7 times";
-            g.text(font, hint, left + panelWidth - 190, top + 225, 0xFF65758A, false);
+            g.text(font, "CLASSIFIED  //  tap the title 7 times", left + 28, top + 286,
+                    0xFF65758A, false);
         }
     }
 
     @Override
     public void onClose() {
+        this.minecraft.options.save();
         this.minecraft.gui.setScreen(parent);
     }
 }
