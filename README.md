@@ -6,9 +6,22 @@ QuantumTrace is an ambitious shader project for Minecraft **26.2**, designed to 
 
 The project begins with **Vanilla Remade**: improved lighting, shadows, atmosphere, and water that preserve the original game's style. A separate **Realism** experience is planned for players who want a more physically inspired look.
 
-> **Development status:** Early development / project foundation. Features listed as planned are design goals, not claims of currently working functionality. Compatibility, supported hardware, and performance targets will be documented after the rendering implementation is verified.
+> **Development status:** Early Fabric client build. The settings screen and several built-in Minecraft graphics controls are implemented. QuantumTrace's custom post-processing shaders, custom glint renderer, and ray-tracing features are still planned work.
 
 ---
+
+## Current build
+
+The current development build includes:
+
+- Open the QuantumTrace control center with **O**.
+- Interface themes: Vanilla, Metal Gear, 2D Minecraft, and Lemons Eats Limes.
+- Potato, Low, Medium, High, and Ultra presets that update selected vanilla graphics options.
+- Direct switches for ambient occlusion, cutout leaves, improved transparency, entity shadows, and vignette.
+- An **Apply Vanilla Maxxing** action that enables those visual options and increases biome blending.
+- A hidden Peabert mascot option, unlocked by clicking the menu title seven times.
+
+These controls change Minecraft's existing graphics options. They are not custom QuantumTrace shaders. The New Glint control is visible but disabled until its renderer exists.
 
 ## Vision
 
@@ -95,10 +108,12 @@ No FPS gains or hardware requirements are promised until repeatable benchmarks a
 ## Compatibility
 
 - **Target Minecraft version:** 26.2
-- **Mod loader:** To be confirmed
-- **Java version:** To be confirmed against the target Minecraft toolchain
-- **Graphics API and shader backend:** To be confirmed
-- **Operating systems and GPU support:** To be documented after testing
+- **Mod loader:** Fabric Loader 0.19.3 or newer
+- **Fabric API:** 0.161.0+26.2
+- **Java version:** 25
+- **Build toolchain:** Fabric Loom 1.17.21 and Gradle 9.5.1
+- **Graphics API and custom shader backend:** Not implemented yet
+- **Operating systems and GPU support:** Not yet tested across a hardware matrix
 
 Compatibility will be stated only after the project has been built and tested against the target environment.
 
@@ -107,11 +122,13 @@ Compatibility will be stated only after the project has been built and tested ag
 - [x] Establish the QuantumTrace project vision and feature direction
 - [ ] Inspect and verify the supplied Minecraft 26.2 project/JAR
 - [ ] Confirm mod loader, mappings, and rendering integration
-- [ ] Establish a working development build
+- [x] Establish a working Fabric development build
+- [x] Add an in-game settings screen and configurable interface themes
+- [x] Connect quality presets and vanilla visual switches to Minecraft graphics options
 - [ ] Implement the Vanilla Remade lighting foundation
 - [ ] Add configurable shadows and ambient occlusion
 - [ ] Add atmospheric effects and improved water
-- [ ] Build the in-game settings and preset system
+- [x] Build the in-game settings and preset system
 - [ ] Profile and optimise each rendering feature
 - [ ] Explore the Realism rendering experience
 - [ ] Investigate optional ray-tracing support
@@ -119,9 +136,7 @@ Compatibility will be stated only after the project has been built and tested ag
 
 ## Installation
 
-There is no public installation procedure yet. Installation instructions will be added when a tested build is available.
-
-Do not treat development artifacts as a stable release.
+Development artifacts are experimental and are not stable releases. Use the QuantumTrace-Fabric-26.2 build artifact from the repository's successful GitHub Actions build. A full shader pack is not included yet.
 
 ## Contributing
 
